@@ -6,7 +6,7 @@ export default function Footer() {
       <div className="text-white">
         Developed by{" "}
         <a
-          href="https://mistral.ai/news/mixtral-of-experts"
+          href="https://github.com/Zaidbhati10114"
           target="_blank"
           rel="noreferrer"
           className="font-bold hover:underline transition underline-offset-2"
@@ -16,7 +16,8 @@ export default function Footer() {
       </div>
       <div className="flex space-x-4 pb-4 sm:pb-0">
         <Link
-          href="https://twitter.com/nutlope"
+          target="_blank"
+          href="https://twitter.com/Zaidbhati4"
           className="group"
           aria-label="TaxPal on Twitter"
         >
@@ -28,7 +29,8 @@ export default function Footer() {
           </svg>
         </Link>
         <Link
-          href="https://github.com/Nutlope/twitterbio"
+          target="_blank"
+          href="https://github.com/Zaidbhati10114"
           className="group"
           aria-label="TaxPal on GitHub"
         >

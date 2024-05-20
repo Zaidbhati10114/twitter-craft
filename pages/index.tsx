@@ -10,7 +10,7 @@ import Head from "next/head";
 import Image from "next/image";
 import { useRef, useState, useEffect } from "react";
 import { Toaster, toast } from "react-hot-toast";
-import { PiNumberCircleOneBold } from "react-icons/pi";
+import { PiNumberCircleOneBold, PiNumberCircleTwo } from "react-icons/pi";
 
 interface ApiResponse {
   result: string;
@@ -156,8 +156,10 @@ const Home: NextPage = () => {
             placeholder="e.g. Amazon CEO"
           />
           <div className="flex mb-5 items-center space-x-3">
-            <Image src="/2-black.png" width={30} height={30} alt="1 icon" />
-            <p className="text-left font-medium">Select your vibe.</p>
+            <PiNumberCircleTwo className="fill-white" size={22} />
+            <p className="text-left font-medium text-white">
+              Select your vibe.
+            </p>
           </div>
           <div className="block">
             <DropDown vibe={vibe} setVibe={(newVibe) => setVibe(newVibe)} />
