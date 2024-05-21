@@ -106,10 +106,11 @@ const Home: NextPage = () => {
       });
 
       if (!res.ok) {
-        if (res.status === 429) {
+        if (res.status === 429 || res.status === 504) {
           setError(
-            "You have exceeded the number of allowed requests. Please try again after 24 Hours."
+            "You have exceeded the number of allowed requests. Please try again after 24 Hours,Or the api is taking more time"
           );
+
           toast.error(error);
         } else {
           setError("An error occurred while generating the bio.");
