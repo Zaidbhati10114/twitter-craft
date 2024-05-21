@@ -1,4 +1,3 @@
-import { cn } from "@/lib/utils";
 import Document, { Head, Html, Main, NextScript } from "next/document";
 
 class MyDocument extends Document {
@@ -6,12 +5,12 @@ class MyDocument extends Document {
     return (
       <Html lang="en">
         <Head>
-          <link rel="icon" href="/favicon.ico" />
+          <link rel="icon" href="/favicon.png" />
           <meta
             name="description"
             content="Generate your next Twitter bio in seconds."
           />
-          <meta property="og:site_name" content="twitterbio.io" />
+          <meta property="og:site_name" content="" />
           <meta
             property="og:description"
             content="Generate your next Twitter bio in seconds."

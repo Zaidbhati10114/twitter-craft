@@ -11,6 +11,8 @@ import Image from "next/image";
 import { useRef, useState, useEffect } from "react";
 import { Toaster, toast } from "react-hot-toast";
 import { PiNumberCircleOneBold, PiNumberCircleTwo } from "react-icons/pi";
+import { P } from "../components/ui/typography";
+import { Loader2 } from "lucide-react";
 
 interface ApiResponse {
   result: string;
@@ -40,7 +42,33 @@ const Home: NextPage = () => {
   const [responseResult, setResponseResult] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [vibe, setVibe] = useState<VibeType>("Professional");
+  const [requestCount, setRequestCount] = useState(0);
   const resultRef = useRef<HTMLDivElement>(null);
+  const [limitToast, setLimitToast] = useState(false);
+
+  useEffect(() => {
+    const storedRequestCount = localStorage.getItem("requestCount");
+    const storedRequestTime = localStorage.getItem("requestTime");
+    const currentTime = Date.now();
+
+    if (storedRequestCount && storedRequestTime) {
+      const parsedRequestCount = parseInt(storedRequestCount, 10);
+      const parsedRequestTime = parseInt(storedRequestTime, 10);
+
+      if (currentTime - parsedRequestTime < 24 * 60 * 60 * 1000) {
+        setRequestCount(parsedRequestCount);
+      } else {
+        localStorage.removeItem("requestCount");
+        localStorage.removeItem("requestTime");
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (responseResult.length > 0 && resultRef.current) {
+      resultRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [responseResult]);
 
   const prompt = `Generate 3 ${
     vibe === "Casual" ? "relaxed" : vibe === "Funny" ? "silly" : "Professional"
@@ -50,13 +78,14 @@ const Home: NextPage = () => {
     bio.slice(-1) === "." ? "" : "."
   }`;
 
-  useEffect(() => {
-    if (responseResult.length > 0 && resultRef.current) {
-      resultRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [responseResult]);
-
   const handleSubmit = async (e: React.FormEvent) => {
+    if (requestCount >= 3) {
+      setError(
+        "You have exceeded the number of allowed requests for today. Please try again tomorrow."
+      );
+      toast.error(error);
+      return;
+    }
     e.preventDefault();
     request++;
     setResponseResult([]);
@@ -77,7 +106,15 @@ const Home: NextPage = () => {
       });
 
       if (!res.ok) {
-        throw new Error("Network response was not ok");
+        if (res.status === 429) {
+          setError(
+            "You have exceeded the number of allowed requests. Please try again after 24 Hours."
+          );
+          toast.error(error);
+        } else {
+          setError("An error occurred while generating the bio.");
+        }
+        return;
       }
 
       const result: ApiResponse = await res.json();
@@ -165,22 +202,29 @@ const Home: NextPage = () => {
             <DropDown vibe={vibe} setVibe={(newVibe) => setVibe(newVibe)} />
           </div>
           {!loading && (
-            <button
-              className="bg-white rounded-xl text-black font-medium px-4 py-2 sm:mt-10 mt-8  w-full"
+            <Button
+              className="bg-white rounded-xl hover:bg-slate-300 text-black font-medium px-4 py-2 sm:mt-10 mt-8"
               onClick={(e) => handleSubmit(e)}
             >
               Generate your bio &rarr;
-            </button>
+            </Button>
           )}
-
           {loading && (
-            <button
-              className="bg-black rounded-xl text-white font-medium px-4 py-2 sm:mt-10 mt-8 hover:bg-black/80 w-full"
+            <Button
+              className="bg-white rounded-xl text-black font-medium px-4 py-2 sm:mt-10 mt-8"
               disabled
             >
-              <LoadingDots color="white" style="large" />
-            </button>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Please wait
+            </Button>
           )}
+          <P className="text-center text-xl text-muted-foreground mt-4 mb-4">
+            Currently, I offer up to{" "}
+            <span className="font-bold underline">Three</span> requests per user
+            within a <span className="font-bold underline">24 hour</span> period
+            as a freelance web developer. I plan to increase this limit in the
+            future to better serve your needs.
+          </P>
         </div>
         <hr className="h-px bg-gray-700 border-1 dark:bg-white" />
         <div className="space-y-10 my-10" ref={resultRef}>
