@@ -1,6 +1,5 @@
 // pages/api/chat.ts
 import { NextApiRequest, NextApiResponse } from 'next';
-import { v4 as uuidv4 } from 'uuid';
 
 interface Message {
   role: string;
@@ -12,45 +11,39 @@ interface RequestBody {
   web_access: boolean;
 }
 
-interface RateLimitInfo {
-  count: number;
-  expiry: number;
-}
+const fetchWithTimeout = (url: string, options: RequestInit, timeout = 10000) => {
+  return Promise.race([
+    fetch(url, options),
+    new Promise<Response>((_, reject) =>
+      setTimeout(() => reject(new Error('Request timeout')), timeout)
+    ),
+  ]);
+};
 
-const rateLimitWindow = 24 * 60 * 60 * 1000; // 24 hours
-const rateLimitMaxRequests = 3; // max requests per day
-const rateLimitStore: { [key: string]: RateLimitInfo } = {};
+const fetchWithRetry = async (url: string, options: RequestInit, retries = 3, delay = 1000): Promise<Response> => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetchWithTimeout(url, options);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response;
+    } catch (error) {
+      if (i < retries - 1) {
+        console.warn(`Retrying... (${i + 1}/${retries})`);
+        await new Promise(res => setTimeout(res, delay));
+      } else {
+        throw error;
+      }
+    }
+  }
+  throw new Error('Max retries reached');
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
     try {
-      // Get user IP and user ID from cookies
-      const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-      let userId = req.cookies['user-id'];
-
-      if (!userId) {
-        userId = uuidv4();
-        res.setHeader('Set-Cookie', `user-id=${userId}; Path=/; HttpOnly; Max-Age=${rateLimitWindow / 1000}`);
-      }
-
-      const identifier = `${ip}-${userId}`;
-      const currentTime = Date.now();
-
-      if (!rateLimitStore[identifier]) {
-        rateLimitStore[identifier] = { count: 1, expiry: currentTime + rateLimitWindow };
-      } else {
-        if (currentTime > rateLimitStore[identifier].expiry) {
-          rateLimitStore[identifier].count = 1;
-          rateLimitStore[identifier].expiry = currentTime + rateLimitWindow;
-        } else {
-          rateLimitStore[identifier].count++;
-        }
-      }
-
-      if (rateLimitStore[identifier].count > rateLimitMaxRequests) {
-        return res.status(429).json({ error: 'Too Many Requests' });
-      }
-
+      console.log('Request received');
       const body: RequestBody = req.body;
 
       const url = process.env.RAPID_API_URL!;
@@ -61,10 +54,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           'X-RapidAPI-Key': process.env.RAPID_API_KEY!,
           'X-RapidAPI-Host': process.env.RAPID_API_HOST!,
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
       };
 
-      const response = await fetch(url, options);
+      const response = await fetchWithRetry(url, options);
+      console.log('Response received');
       const result = await response.json();
 
       return res.status(200).json(result);

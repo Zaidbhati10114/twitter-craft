@@ -226,6 +226,10 @@ const Home: NextPage = () => {
             as a freelance web developer. I plan to increase this limit in the
             future to better serve your needs.
           </P>
+          <P className="text-center text-lg text-muted-foreground mt-2 mb-2">
+            May take couple of minutes to generate your Bio,So Please be
+            patient!
+          </P>
         </div>
         <hr className="h-px bg-gray-700 border-1 dark:bg-white" />
         <div className="space-y-10 my-10" ref={resultRef}>
