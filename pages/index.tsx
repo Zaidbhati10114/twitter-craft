@@ -15,8 +15,12 @@ import { P } from "../components/ui/typography";
 import { Loader2 } from "lucide-react";
 
 interface ApiResponse {
-  result: string;
-  status: boolean;
+  choices: Array<{
+    message: {
+      role: string;
+      content: string;
+    };
+  }>;
 }
 
 let request = 10000;
@@ -119,14 +123,10 @@ const Home: NextPage = () => {
       }
 
       const result: ApiResponse = await res.json();
-      if (result.status) {
-        const biosArray = result.result.split("\n\n");
-        biosArray.sort();
-        setResponseResult(biosArray);
-        setError(null);
-      } else {
-        setError("Failed to fetch response");
-      }
+      const biosContent = result.choices[0].message.content;
+      const biosArray = biosContent.split("\n\n").map((bio) => bio.trim());
+      setResponseResult(biosArray);
+      setError(null);
     } catch (error) {
       setError("Failed to fetch response");
     } finally {
