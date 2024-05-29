@@ -33,6 +33,7 @@ class MyDocument extends Document {
         </Head>
         <body className="bg-[#09090B]">
           <Main />
+
           <NextScript />
         </body>
       </Html>

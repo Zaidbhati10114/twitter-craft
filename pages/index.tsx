@@ -1,29 +1,62 @@
 import DropDown, { VibeType } from "@/components/DropDown";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
-import LoadingDots from "@/components/LoadingDots";
 import { Button } from "@/components/ui/button";
 import { Row } from "@/components/ui/row";
 import { Textarea } from "@/components/ui/textarea";
 import { NextPage } from "next";
 import Head from "next/head";
-import Image from "next/image";
 import { useRef, useState, useEffect } from "react";
-import { Toaster, toast } from "react-hot-toast";
+
 import { PiNumberCircleOneBold, PiNumberCircleTwo } from "react-icons/pi";
 import { P } from "../components/ui/typography";
 import { Loader2 } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
-interface ApiResponse {
-  choices: Array<{
-    message: {
-      role: string;
-      content: string;
-    };
-  }>;
+interface ChatHistory {
+  user: string;
+  bot: string;
 }
 
-let request = 10000;
+interface ResponseContent {
+  text: string;
+}
+
+interface Candidate {
+  content: {
+    parts: ResponseContent[];
+    role: string;
+  };
+  finishReason: string;
+  index: number;
+  safetyRatings: SafetyRating[];
+}
+
+interface SafetyRating {
+  category: string;
+  probability: string;
+}
+
+interface ApiResponse {
+  response: {
+    response: {
+      candidates: Candidate[];
+      usageMetadata: {
+        promptTokenCount: number;
+        candidatesTokenCount: number;
+        totalTokenCount: number;
+      };
+    };
+  };
+}
+
+interface FoodDescriptions {
+  "1.": string;
+  "2.": string;
+  "3.": string;
+}
+
+const request = 10000;
 
 const easySelections = [
   {
@@ -46,27 +79,9 @@ const Home: NextPage = () => {
   const [responseResult, setResponseResult] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [vibe, setVibe] = useState<VibeType>("Professional");
-  const [requestCount, setRequestCount] = useState(0);
   const resultRef = useRef<HTMLDivElement>(null);
-  const [limitToast, setLimitToast] = useState(false);
-
-  useEffect(() => {
-    const storedRequestCount = localStorage.getItem("requestCount");
-    const storedRequestTime = localStorage.getItem("requestTime");
-    const currentTime = Date.now();
-
-    if (storedRequestCount && storedRequestTime) {
-      const parsedRequestCount = parseInt(storedRequestCount, 10);
-      const parsedRequestTime = parseInt(storedRequestTime, 10);
-
-      if (currentTime - parsedRequestTime < 24 * 60 * 60 * 1000) {
-        setRequestCount(parsedRequestCount);
-      } else {
-        localStorage.removeItem("requestCount");
-        localStorage.removeItem("requestTime");
-      }
-    }
-  }, []);
+  const [message, setMessage] = useState<string>("");
+  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
 
   useEffect(() => {
     if (responseResult.length > 0 && resultRef.current) {
@@ -83,21 +98,14 @@ const Home: NextPage = () => {
   }`;
 
   const handleSubmit = async (e: React.FormEvent) => {
-    if (requestCount >= 3) {
-      setError(
-        "You have exceeded the number of allowed requests for today. Please try again tomorrow."
-      );
-      toast.error(error);
-      return;
-    }
     e.preventDefault();
-    request++;
-    setResponseResult([]);
+
     setLoading(true);
+    setResponseResult([]);
 
     const requestBody = {
-      messages: [{ role: "user", content: prompt }],
-      web_access: false,
+      message: prompt,
+      chatHistory,
     };
 
     try {
@@ -115,7 +123,11 @@ const Home: NextPage = () => {
             "You have exceeded the number of allowed requests. Please try again after 24 Hours,Or the api is taking more time"
           );
 
-          toast.error("Request Failed! Try again after 24 Hours");
+          toast({
+            variant: "destructive",
+            title: "Uh oh! Something went wrong.",
+            description: "There was a problem with your request.",
+          });
         } else {
           setError("An error occurred while generating the bio.");
         }
@@ -123,9 +135,18 @@ const Home: NextPage = () => {
       }
 
       const result: ApiResponse = await res.json();
-      const biosContent = result.choices[0].message.content;
-      const biosArray = biosContent.split("\n\n").map((bio) => bio.trim());
-      setResponseResult(biosArray);
+      const responseText =
+        result.response.response.candidates[0].content.parts[0].text;
+      if (responseText.length === 0) {
+        toast({
+          variant: "destructive",
+          title: "No Data Found",
+          description: "Try Again with a different prompt",
+        });
+      }
+      const data: FoodDescriptions = JSON.parse(responseText);
+      setResponseResult([data["1."], data["2."], data["3."]]);
+      setChatHistory([...chatHistory, { user: message, bot: responseText }]);
       setError(null);
     } catch (error) {
       setError("Failed to fetch response");
@@ -154,7 +175,7 @@ const Home: NextPage = () => {
         </h1>
         <div className="mt-7">
           <h1 className="text-white">
-            Powered by <span className="text-xl">ChatGPT</span>
+            Powered by <span className="text-xl">Gemini AI</span>
           </h1>
         </div>
         <div className="max-w-xl w-full">
@@ -193,6 +214,7 @@ const Home: NextPage = () => {
             className="bg-black text-white rounded-md border-gray-300 shadow-sm focus:border-black focus:ring-black my-5"
             placeholder="e.g. Amazon CEO"
           />
+          {error && <p className="text-red-500 text-sm">{error}</p>}
           <div className="flex mb-5 items-center space-x-3">
             <PiNumberCircleTwo className="fill-white" size={22} />
             <p className="text-left font-medium text-white">
@@ -233,34 +255,23 @@ const Home: NextPage = () => {
         </div>
         <hr className="h-px bg-gray-700 border-1 dark:bg-white" />
         <div className="space-y-10 my-10" ref={resultRef}>
-          {responseResult.length > 0 && (
-            <div>
-              <h2 className="sm:text-4xl text-3xl pb-5 font-bold text-white mx-auto">
-                You&apos;r AI Generated Bio&apos;s
-              </h2>
-              <div className="space-y-8 flex flex-col items-center justify-center max-w-xl mx-auto">
-                {responseResult.map((bio, index) => (
-                  <div
-                    key={index}
-                    className="bg-black text-white rounded-xl shadow-md transition cursor-copy border"
-                    onClick={() => {
-                      navigator.clipboard.writeText(bio);
-                      toast("Bio copied to clipboard", {
-                        icon: "✂️",
-                      });
-                    }}
-                  >
-                    <p>{bio}</p>
-                  </div>
-                ))}
-              </div>
+          {responseResult.map((item, index) => (
+            <div
+              className="bg-white rounded-xl shadow-md p-4 hover:bg-gray-100 transition cursor-copy border"
+              onClick={() => {
+                navigator.clipboard.writeText(item);
+                toast({
+                  description: "Your Bio is copied to your clipboard.",
+                });
+              }}
+              key={index}
+            >
+              <p>{item}</p>
             </div>
-          )}
-          {error && <p>{error}</p>}
+          ))}
         </div>
       </main>
       <Footer />
-      <Toaster position="bottom-center" />
     </div>
   );
 };

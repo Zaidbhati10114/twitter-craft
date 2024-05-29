@@ -1,73 +1,67 @@
-// pages/api/chat.ts
 import { NextApiRequest, NextApiResponse } from 'next';
+import {
+    GoogleGenerativeAI,
+    HarmCategory,
+    HarmBlockThreshold,
+} from '@google/generative-ai';
 
-interface Message {
-  role: string;
-  content: string;
-}
-
-interface RequestBody {
-  messages: Message[];
-  web_access: boolean;
-}
-
-const fetchWithTimeout = (url: string, options: RequestInit, timeout = 10000) => {
-  return Promise.race([
-    fetch(url, options),
-    new Promise<Response>((_, reject) =>
-      setTimeout(() => reject(new Error('Request timeout')), timeout)
-    ),
-  ]);
-};
-
-const fetchWithRetry = async (url: string, options: RequestInit, retries = 3, delay = 1000): Promise<Response> => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      const response = await fetchWithTimeout(url, options);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response;
-    } catch (error) {
-      if (i < retries - 1) {
-        console.warn(`Retrying... (${i + 1}/${retries})`);
-        await new Promise(res => setTimeout(res, delay));
-      } else {
-        throw error;
-      }
-    }
-  }
-  throw new Error('Max retries reached');
-};
+const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY!;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method === 'POST') {
-    try {
-      console.log('Request received');
-      const body: RequestBody = req.body;
-
-      const url = process.env.RAPID_API_URL!;
-      const options: RequestInit = {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-RapidAPI-Key': process.env.RAPID_API_KEY!,
-          'X-RapidAPI-Host': process.env.RAPID_API_HOST!,
-        },
-        body: JSON.stringify(body),
-      };
-
-      const response = await fetchWithRetry(url, options);
-      console.log('Response received');
-      const result = await response.json();
-
-      return res.status(200).json(result);
-    } catch (error) {
-      console.error('Error:', error);
-      return res.status(500).json({ error: 'Internal Server Error' });
+    if (req.method !== 'POST') {
+        res.setHeader('Allow', ['POST']);
+        return res.status(405).end(`Method ${req.method} Not Allowed`);
     }
-  } else {
-    res.setHeader('Allow', ['POST']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-  }
+
+    if (!apiKey) {
+        return res.status(500).json({ error: 'API Key not found in environment variables' });
+    }
+
+    try {
+        const { message, chatHistory } = req.body;
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-1.5-flash-latest',
+        });
+
+        const generationConfig = {
+            temperature: 1,
+            topP: 0.95,
+            topK: 64,
+            maxOutputTokens: 8192,
+            responseMimeType: 'application/json',
+        };
+
+        const safetySettings = [
+            {
+                category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+        ];
+
+        const chatSession = await model.startChat({
+            generationConfig,
+            safetySettings,
+            history: chatHistory,
+        });
+
+        const response = await chatSession.sendMessage(message);
+
+        return res.status(200).json({ response });
+    } catch (error: any) {
+        console.error('Error:', error);
+        return res.status(500).json({ error: error.message });
+    }
 }
