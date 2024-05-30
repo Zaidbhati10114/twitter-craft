@@ -14,12 +14,12 @@ export default function Header() {
         <H1 className="font-bold sm:text-3xl ml-1 text-white">TwitterCraft</H1>
       </Link>
       <a
-        className="flex max-w-fit items-center justify-center space-x-2 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-600 shadow-md transition-colors hover:bg-gray-100"
+        className="flex max-w-fit items-center justify-center space-x-2 rounded-full border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 shadow-md transition-colors hover:bg-gray-100 md:px-4 md:py-2 md:text-sm"
         href="https://github.com/Zaidbhati10114/twitter-craft"
         target="_blank"
         rel="noopener noreferrer"
       >
-        <Github />
+        <Github className="w-4 h-4 md:w-5 md:h-5" />
         <p>Star on GitHub</p>
       </a>
     </header>

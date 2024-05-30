@@ -249,17 +249,18 @@ const Home: NextPage = () => {
               Please wait
             </Button>
           )}
-          <P className="text-center text-xl text-muted-foreground mt-4 mb-4">
-            Currently, I offer up to{" "}
-            <span className="font-bold underline">Three</span> requests per user
-            within a <span className="font-bold underline">24 hour</span> period
-            as a freelance web developer. I plan to increase this limit in the
-            future to better serve your needs.
-          </P>
-          <P className="text-center text-lg text-muted-foreground mt-2 mb-2">
-            May take couple of minutes to generate your Bio,So Please be
-            patient!
-          </P>
+          <ul className="p-4">
+            <li className="text-white">
+              Currently, I offer up to 10 requests per second as a freelance web
+              developer. I plan to increase this limit in the future to better
+              serve your needs.
+            </li>
+            <li className="text-center text-lg text-muted-foreground mt-2 mb-2">
+              May take couple of minutes to generate your Bio,
+              <br />
+              So Please be patient!
+            </li>
+          </ul>
         </div>
         <hr className="h-px bg-gray-700 border-1 dark:bg-white" />
         <div className="space-y-10 my-10" ref={resultRef}>
