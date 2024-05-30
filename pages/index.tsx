@@ -103,9 +103,17 @@ const Home: NextPage = () => {
     setLoading(true);
     setResponseResult([]);
 
+    setResponseResult([]);
+
+    // Check if chat history is not empty
+    if (chatHistory.length > 0) {
+      // Clear chat history
+      setChatHistory([]);
+    }
+
     const requestBody = {
       message: prompt,
-      chatHistory,
+      chatHistory: [],
     };
 
     try {
