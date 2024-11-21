@@ -11,6 +11,7 @@ import { useRef, useState, useEffect } from "react";
 import { PiNumberCircleOneBold, PiNumberCircleTwo } from "react-icons/pi";
 import { Loader2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ApiResponse {
   response: {
@@ -58,6 +59,10 @@ const Home: NextPage = () => {
     setLoading(true);
     setResponseResult([]);
     setError(null);
+
+    if (resultRef.current) {
+      resultRef.current.scrollIntoView({ behavior: "smooth" });
+    }
 
     const requestBody = {
       message: `Generate a Twitter bio for a ${vibe.toLowerCase()} ${bio} profile`,
@@ -204,6 +209,13 @@ const Home: NextPage = () => {
         </div>
         <hr className="h-px bg-gray-700 border-1 dark:bg-white" />
         <div className="space-y-10 my-10" ref={resultRef}>
+          {loading && (
+            <>
+              <Skeleton className="w-[100vh] h-[6vh] rounded-xl" />
+              <Skeleton className="w-[100vh] h-[6vh] rounded-xl" />
+              <Skeleton className="w-[100vv] h-[6vh] rounded-xl" />
+            </>
+          )}
           {responseResult.map((item, index) => (
             <div
               className="bg-white rounded-xl shadow-md p-4 hover:bg-gray-100 transition cursor-copy border"
