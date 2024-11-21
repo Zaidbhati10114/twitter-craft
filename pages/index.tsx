@@ -9,43 +9,17 @@ import Head from "next/head";
 import { useRef, useState, useEffect } from "react";
 
 import { PiNumberCircleOneBold, PiNumberCircleTwo } from "react-icons/pi";
-import { P } from "../components/ui/typography";
 import { Loader2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-
-interface ChatHistory {
-  user: string;
-  bot: string;
-}
-
-interface ResponseContent {
-  text: string;
-}
-
-interface Candidate {
-  content: {
-    parts: ResponseContent[];
-    role: string;
-  };
-  finishReason: string;
-  index: number;
-  safetyRatings: SafetyRating[];
-}
-
-interface SafetyRating {
-  category: string;
-  probability: string;
-}
 
 interface ApiResponse {
   response: {
     response: {
-      candidates: Candidate[];
-      usageMetadata: {
-        promptTokenCount: number;
-        candidatesTokenCount: number;
-        totalTokenCount: number;
-      };
+      candidates: {
+        content: {
+          parts: { text: string }[];
+        };
+      }[];
     };
   };
 }
@@ -59,18 +33,10 @@ interface FoodDescriptions {
 const request = 10000;
 
 const easySelections = [
-  {
-    shortTitle: "Adventure Seeker",
-  },
-  {
-    shortTitle: "Tech Enthusiast",
-  },
-  {
-    shortTitle: "Food Lover",
-  },
-  {
-    shortTitle: "Fitness Buff",
-  },
+  { shortTitle: "Adventure Seeker" },
+  { shortTitle: "Tech Enthusiast" },
+  { shortTitle: "Food Lover" },
+  { shortTitle: "Fitness Buff" },
 ];
 
 const Home: NextPage = () => {
@@ -80,8 +46,6 @@ const Home: NextPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [vibe, setVibe] = useState<VibeType>("Professional");
   const resultRef = useRef<HTMLDivElement>(null);
-  const [message, setMessage] = useState<string>("");
-  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
 
   useEffect(() => {
     if (responseResult.length > 0 && resultRef.current) {
@@ -89,31 +53,14 @@ const Home: NextPage = () => {
     }
   }, [responseResult]);
 
-  const prompt = `Generate 3 ${
-    vibe === "Casual" ? "relaxed" : vibe === "Funny" ? "silly" : "Professional"
-  } twitter biographies with no hashtags and clearly labeled "1.", "2.", and "3.". Only return these 3 twitter bios, nothing else. ${
-    vibe === "Funny" ? "Make the biographies humorous" : ""
-  } Make sure each generated biography is less than 300 characters, has short sentences that are found in Twitter bios, and feel free to use this context as well: ${bio}${
-    bio.slice(-1) === "." ? "" : "."
-  }`;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     setLoading(true);
     setResponseResult([]);
-
-    setResponseResult([]);
-
-    // Check if chat history is not empty
-    if (chatHistory.length > 0) {
-      // Clear chat history
-      setChatHistory([]);
-    }
+    setError(null);
 
     const requestBody = {
-      message: prompt,
-      chatHistory: [],
+      message: `Generate a Twitter bio for a ${vibe.toLowerCase()} ${bio} profile`,
     };
 
     try {
@@ -126,38 +73,31 @@ const Home: NextPage = () => {
       });
 
       if (!res.ok) {
-        if (res.status === 429 || res.status === 504) {
-          setError(
-            "You have exceeded the number of allowed requests. Please try again after 24 Hours,Or the api is taking more time"
-          );
-
-          toast({
-            variant: "destructive",
-            title: "Uh oh! Something went wrong.",
-            description: "There was a problem with your request.",
-          });
-        } else {
-          setError("An error occurred while generating the bio.");
-        }
-        return;
+        throw new Error(
+          res.status === 429 || res.status === 504
+            ? "Too many requests. Please try again later."
+            : "An error occurred while generating the bio."
+        );
       }
 
       const result: ApiResponse = await res.json();
       const responseText =
         result.response.response.candidates[0].content.parts[0].text;
-      if (responseText.length === 0) {
-        toast({
-          variant: "destructive",
-          title: "No Data Found",
-          description: "Try Again with a different prompt",
-        });
+
+      try {
+        const data: FoodDescriptions = JSON.parse(responseText);
+        setResponseResult([data["1."], data["2."], data["3."]]);
+      } catch (parseError) {
+        console.error("JSON Parse Error:", parseError);
+        setError("Failed to parse response. Please try again.");
       }
-      const data: FoodDescriptions = JSON.parse(responseText);
-      setResponseResult([data["1."], data["2."], data["3."]]);
-      setChatHistory([...chatHistory, { user: message, bot: responseText }]);
-      setError(null);
-    } catch (error) {
-      setError("Failed to fetch response");
+    } catch (error: any) {
+      setError(error.message);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
     } finally {
       setLoading(false);
     }
@@ -201,7 +141,7 @@ const Home: NextPage = () => {
             <h1 className="text-left font-lg text-white">
               Need Some Suggestions?
             </h1>
-            <Row className="flex-wrap gap-2  justify-start items-center my-2 w-full">
+            <Row className="flex-wrap gap-2 justify-start items-center my-2 w-full">
               {easySelections.map((item) => (
                 <Button
                   key={item.shortTitle}
