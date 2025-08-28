@@ -40,7 +40,7 @@ Example: {"1.": "Tech innovator building the future. Passionate about AI and sol
         // Initialize Google Generative AI
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
-            model: 'gemini-pro',
+            model: 'gemini-2.5-flash',
         });
 
         const result = await model.generateContent(modifiedPrompt);
